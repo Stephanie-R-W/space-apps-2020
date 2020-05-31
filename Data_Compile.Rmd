@@ -1,0 +1,128 @@
+---
+title: "Carpe Charmin"
+author: "Stephanie Boris"
+date: "May 30, 2020"
+output: html_document
+---
+
+```{r, eval=TRUE, echo=FALSE}
+#Pull Data In
+
+#Popultion
+population = read.csv("~/GitHub/space-apps-2020/population_countries.csv")
+names(population)= c("pop_rank", "country", "pop2020", "pop2019", "pop_growth_rate", "land_area", "pop_density")
+
+#Electricity
+electricity = read.csv("~/GitHub/space-apps-2020/Electricity Consumption by Country.csv", skip = 1, stringsAsFactors = FALSE)
+electricity = electricity[,1:3]
+names(electricity) = c("elec_rank", "country", "elec_consumption_bil_kwh")
+electricity$country[which(electricity$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+electricity$country[which(electricity$country=='Korea, Republic Of')] = 'South Korea'
+
+#Gasoline
+gasoline = read.csv("~/GitHub/space-apps-2020/Gasoline consumption by country.csv", skip=1,stringsAsFactors = FALSE)
+gasoline = gasoline[,1:3]
+names(gasoline) = c("gas_rank","country", "gas_consumption_k_barrels_per_day")
+gasoline$country[which(gasoline$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+gasoline$country[which(gasoline$country=='Korea, Republic Of')] = 'South Korea'
+
+#Jet Fuel
+jet = read.csv("~/GitHub/space-apps-2020/Jet fuel consumption by country.csv", skip=1, stringsAsFactors = FALSE)
+jet = jet[,1:3]
+names(jet) = c("jet_rank", "country", "jet_consumption_k_barrels_per_day")
+jet$country[which(jet$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+jet$country[which(jet$country=='Korea, Republic Of')] = 'South Korea'
+
+#Merge Popultion and Consumption data
+pop_consum = merge(x=electricity, y=gasoline, by='country', all=TRUE)
+pop_consum2 = merge(x=pop_consum, y=jet, by='country', all=TRUE)
+pop_consum_final = merge(x=pop_consum2, y=population, by='country', all=TRUE)
+
+#covid (current?)
+covid = read.csv("~/GitHub/space-apps-2020/Worldmeters 5_30_2020 Corono Virus data cases fatalities population.csv", skip=3, stringsAsFactors = FALSE)
+names(covid) = c("covid_rank", "country",	"total_cases", "new_cases", "total_deaths", "new_deaths", "total_recovered", "active_cases", "serious_critical_cases", "cases_per_M_pop", "deaths_per_M_pop", "total_tests", "tests_per_M_pop", "population_covid")
+    
+  #cleaning
+covid$country[which(covid$country=='USA')] = 'United States'
+covid$country[which(covid$country=='UK')] = 'United Kingdom'
+covid$country[which(covid$country=='UAE')] = 'United Arab Emirates'
+covid$country[which(covid$country=="S. Korea")] = 'South Korea'
+
+covid_combined = merge(pop_consum_final, covid, by = 'country', all=TRUE)
+
+
+
+#Poverty
+poverty = read.csv("~/GitHub/space-apps-2020/pct population below the povertry line.csv", skip=1, stringsAsFactors = FALSE)
+poverty = poverty[,1:3]
+names(poverty) = c("pov_rank","country", "pop_below_poverty_line")
+poverty$country[which(poverty$country=="Korea, South")] = 'South Korea'
+covid_combined2 = merge(covid_combined, poverty, by = 'country', all=TRUE)
+
+
+
+#Gov Quarantine Measures
+quarantine = read.csv("~/GitHub/space-apps-2020/gov_response.csv")
+
+
+#health $
+health_dol = read.csv("~/GitHub/space-apps-2020/Health $ as percent GDP.csv", skip=1, stringsAsFactors = FALSE)
+health_dol = health_dol[,1:3]
+names(health_dol) = c("health_dol_rank","country", "health_expenditure_percent_GDP")
+health_dol$country[which(health_dol$country=="Korea, South")] = 'South Korea'
+
+#hospital beds
+beds = read.csv("~/GitHub/space-apps-2020/hospital beds per 1000 by country.csv", skip=1, stringsAsFactors = FALSE)
+beds = beds[,1:3]
+names(beds) = c("beds_rank","country", "bed_density_per_k_pop")
+beds$country[which(beds$country=="Korea, South")] = 'South Korea'
+
+covid_final2 = merge(covid_combined2, health_dol, by = 'country', all=TRUE)
+covid_final3 = merge(covid_final2, beds, by = 'country', all=TRUE)
+
+#life expectancy
+life = read.csv("~/GitHub/space-apps-2020/life expectancy by country.csv", skip=1, stringsAsFactors = FALSE)
+life = life[,1:3]
+names(life) = c("life_rank","country", "life_expectancy_at_birth_years")
+life$country[which(life$country=="Korea, South")] = 'South Korea'
+covid_final4 = merge(covid_final3, life, by = 'country', all=TRUE)
+
+#unemployment
+unemployment = read.csv("~/GitHub/space-apps-2020/unemployment_summary.csv", stringsAsFactors = FALSE)
+names(unemployment)[1] = 'country'
+covid_final5 = merge(covid_final4, unemployment, by = 'country', all=TRUE)
+
+#complete cases without unemployment
+covid_final_l = covid_final4[complete.cases(covid_final4),]
+#complete cases
+covid_final_s = covid_final5[complete.cases(covid_final5),]
+
+#write.csv(covid_final_s, "combined_covid_with_unemployment.csv")
+covid_final_s2 = covid_final_s[which(!grepl("no data", covid_final_s$unemployment2020)),]
+covid_final_s3 = covid_final_s2[which(!grepl("VALUE", covid_final_s2$covid_inc_unemployment)),]
+View(covid_final_s3)
+
+covid_final_s3$new_cases[which(covid_final_s3$new_cases=='')] = 0
+covid_final_s3$new_deaths[which(covid_final_s3$new_deaths=='')] = 0
+covid_final_s3$total_deaths[which(covid_final_s3$total_deaths=='')] = 0
+covid_final_s3$serious_critical_cases[which(covid_final_s3$serious_critical_cases=='')] = 0
+covid_final_s3$deaths_per_M_pop[which(covid_final_s3$deaths_per_M_pop=='')] = 0
+covid_final_s3$tests_per_M_pop[which(covid_final_s3$tests_per_M_pop=='')] = 0
+covid_final_s3$total_tests[which(covid_final_s3$total_tests=='')] = 0
+covid_final_s3$active_cases = as.numeric(gsub(",", "", gsub("N/A", 0, covid_final_s3$active_cases)))
+covid_final_s3$total_recovered = as.numeric(gsub(",", "", gsub("N/A", 0, covid_final_s3$total_recovered)))
+
+
+for (i in 2:length(covid_final_s3)){
+  covid_final_s3[,i] = as.numeric(gsub(",", "",covid_final_s3[,i]))
+}
+summary(covid_final_s3)
+
+#write.csv(covid_final_s3, "combined_covid_final.csv")
+
+```
+
+```{r}
+pairs(covid_final_s3[,c("deaths_per_M_pop", "pop_density", "elec_consumption_bil_kwh","gas_consumption_k_barrels_per_day", "jet_consumption_k_barrels_per_day", "health_expenditure_percent_GDP", "pop_below_poverty_line", "bed_density_per_k_pop", "life_expectancy_at_birth_years", "covid_inc_unemployment")])
+
+```
