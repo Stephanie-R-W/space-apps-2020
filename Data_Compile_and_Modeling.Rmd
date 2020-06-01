@@ -1,0 +1,283 @@
+---
+title: "Carpe Charmin"
+author: "Stephanie Boris"
+date: "May 30, 2020"
+output: pdf_document
+---
+
+```{r, eval=TRUE, echo=FALSE}
+#Pull Data In
+
+#Popultion
+population = read.csv("~/GitHub/space-apps-2020/population_countries.csv")
+names(population)= c("pop_rank", "country", "pop2020", "pop2019", "pop_growth_rate", "land_area", "pop_density")
+
+#Electricity
+electricity = read.csv("~/GitHub/space-apps-2020/Electricity Consumption by Country.csv", skip = 1, stringsAsFactors = FALSE)
+electricity = electricity[,1:3]
+names(electricity) = c("elec_rank", "country", "elec_consumption_bil_kwh")
+electricity$country[which(electricity$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+electricity$country[which(electricity$country=='Korea, Republic Of')] = 'South Korea'
+
+#Gasoline
+gasoline = read.csv("~/GitHub/space-apps-2020/Gasoline consumption by country.csv", skip=1,stringsAsFactors = FALSE)
+gasoline = gasoline[,1:3]
+names(gasoline) = c("gas_rank","country", "gas_consumption_k_barrels_per_day")
+gasoline$country[which(gasoline$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+gasoline$country[which(gasoline$country=='Korea, Republic Of')] = 'South Korea'
+
+#Jet Fuel
+jet = read.csv("~/GitHub/space-apps-2020/Jet fuel consumption by country.csv", skip=1, stringsAsFactors = FALSE)
+jet = jet[,1:3]
+names(jet) = c("jet_rank", "country", "jet_consumption_k_barrels_per_day")
+jet$country[which(jet$country=='Korea, Democratic People\'s Republic Of')] = 'North Korea'
+jet$country[which(jet$country=='Korea, Republic Of')] = 'South Korea'
+
+#Merge Popultion and Consumption data
+pop_consum = merge(x=electricity, y=gasoline, by='country', all=TRUE)
+pop_consum2 = merge(x=pop_consum, y=jet, by='country', all=TRUE)
+pop_consum_final = merge(x=pop_consum2, y=population, by='country', all=TRUE)
+
+#covid (current?)
+covid = read.csv("~/GitHub/space-apps-2020/Worldmeters 5_30_2020 Corono Virus data cases fatalities population.csv", skip=3, stringsAsFactors = FALSE)
+names(covid) = c("covid_rank", "country",	"total_cases", "new_cases", "total_deaths", "new_deaths", "total_recovered", "active_cases", "serious_critical_cases", "cases_per_M_pop", "deaths_per_M_pop", "total_tests", "tests_per_M_pop", "population_covid")
+    
+  #cleaning
+covid$country[which(covid$country=='USA')] = 'United States'
+covid$country[which(covid$country=='UK')] = 'United Kingdom'
+covid$country[which(covid$country=='UAE')] = 'United Arab Emirates'
+covid$country[which(covid$country=="S. Korea")] = 'South Korea'
+
+covid_combined = merge(pop_consum_final, covid, by = 'country', all=TRUE)
+
+
+
+#Poverty
+poverty = read.csv("~/GitHub/space-apps-2020/pct population below the povertry line.csv", skip=1, stringsAsFactors = FALSE)
+poverty = poverty[,1:3]
+names(poverty) = c("pov_rank","country", "pop_below_poverty_line")
+poverty$country[which(poverty$country=="Korea, South")] = 'South Korea'
+covid_combined2 = merge(covid_combined, poverty, by = 'country', all=TRUE)
+
+
+#health $
+health_dol = read.csv("~/GitHub/space-apps-2020/Health $ as percent GDP.csv", skip=1, stringsAsFactors = FALSE)
+health_dol = health_dol[,1:3]
+names(health_dol) = c("health_dol_rank","country", "health_expenditure_percent_GDP")
+health_dol$country[which(health_dol$country=="Korea, South")] = 'South Korea'
+
+#hospital beds
+beds = read.csv("~/GitHub/space-apps-2020/hospital beds per 1000 by country.csv", skip=1, stringsAsFactors = FALSE)
+beds = beds[,1:3]
+names(beds) = c("beds_rank","country", "bed_density_per_k_pop")
+beds$country[which(beds$country=="Korea, South")] = 'South Korea'
+
+covid_final2 = merge(covid_combined2, health_dol, by = 'country', all=TRUE)
+covid_final3 = merge(covid_final2, beds, by = 'country', all=TRUE)
+
+#life expectancy
+life = read.csv("~/GitHub/space-apps-2020/life expectancy by country.csv", skip=1, stringsAsFactors = FALSE)
+life = life[,1:3]
+names(life) = c("life_rank","country", "life_expectancy_at_birth_years")
+life$country[which(life$country=="Korea, South")] = 'South Korea'
+covid_final4 = merge(covid_final3, life, by = 'country', all=TRUE)
+
+#unemployment
+unemployment = read.csv("~/GitHub/space-apps-2020/unemployment_summary.csv", stringsAsFactors = FALSE)
+names(unemployment)[1] = 'country'
+covid_final5 = merge(covid_final4, unemployment, by = 'country', all=TRUE)
+
+#complete cases without unemployment
+covid_final_l = covid_final4[complete.cases(covid_final4),]
+#complete cases
+covid_final_s = covid_final5[complete.cases(covid_final5),]
+
+#write.csv(covid_final_s, "combined_covid_with_unemployment.csv")
+covid_final_s2 = covid_final_s[which(!grepl("no data", covid_final_s$unemployment2020)),]
+covid_final_s3 = covid_final_s2[which(!grepl("VALUE", covid_final_s2$covid_inc_unemployment)),]
+View(covid_final_s3)
+
+covid_final_s3$new_cases[which(covid_final_s3$new_cases=='')] = 0
+covid_final_s3$new_deaths[which(covid_final_s3$new_deaths=='')] = 0
+covid_final_s3$total_deaths[which(covid_final_s3$total_deaths=='')] = 0
+covid_final_s3$serious_critical_cases[which(covid_final_s3$serious_critical_cases=='')] = 0
+covid_final_s3$deaths_per_M_pop[which(covid_final_s3$deaths_per_M_pop=='')] = 0
+covid_final_s3$tests_per_M_pop[which(covid_final_s3$tests_per_M_pop=='')] = 0
+covid_final_s3$total_tests[which(covid_final_s3$total_tests=='')] = 0
+covid_final_s3$active_cases = as.numeric(gsub(",", "", gsub("N/A", 0, covid_final_s3$active_cases)))
+covid_final_s3$total_recovered = as.numeric(gsub(",", "", gsub("N/A", 0, covid_final_s3$total_recovered)))
+
+
+for (i in 2:length(covid_final_s3)){
+  covid_final_s3[,i] = as.numeric(gsub(",", "",covid_final_s3[,i]))
+}
+summary(covid_final_s3)
+
+#write.csv(covid_final_s3, "combined_covid_final.csv")
+
+#Age 
+age = read.csv('age dependency ratio folks over 64 to 15-64 by country.csv', skip=1, stringsAsFactors = FALSE)
+age = age[, c('Country', 'Code', 'Age.dependency.ratio..old......64......of.working.age.population.15.64.')]
+names(age) = c("country","country_code", "age_over_64_ratio")
+covid_final_s4 = merge(covid_final_s3, age, by = 'country', all=TRUE)
+covid_final_s4 = covid_final_s4[complete.cases(covid_final_s4),]
+View(covid_final_s4)
+
+#Urban
+urban = read.csv('Median age and Urban population % by country worldmeters.csv', skip=2, stringsAsFactors = FALSE)
+names(urban) = c("rank", "country","pop", "median_age", "urban_percent")
+urban = urban[,c("country", "urban_percent")]
+urban$urban_percent = as.numeric(gsub("%", "",urban$urban_percent))
+
+                                 
+                                 
+covid_final_s5 = merge(covid_final_s4, urban, by = 'country', all=TRUE)
+covid_final_s5 = covid_final_s5[complete.cases(covid_final_s5),]
+#nrow(covid_final_s5)
+
+
+#first_case
+first = read.csv('time_series_covid19_confirmed_global.csv', stringsAsFactors = FALSE)
+first = first[,-1]
+names(first)[1:3] = c("country", "lat", "lon")
+first2 = aggregate(first[,-1], by = list(first$"country"), FUN=sum)
+first2$days_since_first_infection = rep("")
+for (i in 1:nrow(first2)){
+  for (j in 4:length(first2)){
+      if (!is.na(first2[i, j]) & first2[i, j] > 0){
+        first2$days_since_first_infection[i] = as.numeric(as.Date("2020-05-31") - as.Date(gsub("X", "", names(first2)[j]), format="%m.%d.%y"))
+        i=i+1
+      }
+  }
+}
+head(first2$days_since_first_infection)
+names(first2)[1] = 'country'
+first2 = first2[c('country', 'days_since_first_infection')]
+                                 
+covid_final_s6 = merge(covid_final_s5, first2, by = 'country', all=TRUE)
+nrow(covid_final_s6)
+covid_final_s6 = covid_final_s6[complete.cases(covid_final_s6),]
+covid_final_s6$days_since_first_infection = as.numeric(covid_final_s6$days_since_first_infection)
+
+
+#Gov Quarantine Measures
+quarantine = read.csv("~/GitHub/space-apps-2020/gov_response.csv")
+quarantine$GovernmentResponseIndex = as.numeric(quarantine$GovernmentResponseIndex)
+quarantine$Date = as.Date(as.character(quarantine$Date), format="%Y%m%d")
+quarantine2 = quarantine[which(quarantine$GovernmentResponseIndex>0), c("CountryName", 'Date')]
+quarantine3 = aggregate(quarantine2[,-1], by = list(quarantine2$"CountryName"), FUN=min)
+quarantine3[,2] = as.numeric(as.Date("2020-05-31") - quarantine3[,2])
+names(quarantine3) = c("country", "days_since_government_first_response")
+
+covid_final_s7 = merge(covid_final_s6, quarantine3, by = 'country', all=TRUE)
+covid_final_s7 = covid_final_s7[complete.cases(covid_final_s7),]
+nrow(covid_final_s7)
+
+covid_final_s7$days_to_gov_response = as.numeric(covid_final_s7$days_since_first_infection - covid_final_s7$days_since_government_first_response)
+
+
+write.csv(covid_final_s7, "all_data2.csv")
+
+
+
+```
+
+```{r}
+#Correlations
+panel.cor <- function(x, y){
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- round(cor(x, y), digits=2)
+    txt <- paste0("R = ", r)
+    #cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt)#, cex = cex.cor * r)
+}
+
+# Stephanie is super awesome - from John
+
+pairs(covid_final_s7[,c("deaths_per_M_pop", "pop_density", "elec_consumption_bil_kwh","gas_consumption_k_barrels_per_day", "jet_consumption_k_barrels_per_day", "age_over_64_ratio", "urban_percent", "health_expenditure_percent_GDP", "pop_below_poverty_line", "bed_density_per_k_pop", "life_expectancy_at_birth_years", "covid_inc_unemployment")], 
+       lower.panel = panel.cor)
+
+
+library(psych)
+pairs.panels(covid_final_s8[,c("days_to_gov_response", "deaths_per_M_pop", "EPI.current2")], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+res <- cor(covid_final_s6[,c("deaths_per_M_pop", "pop_density", "elec_consumption_bil_kwh","gas_consumption_k_barrels_per_day", "age_over_64_ratio",  "urban_percent", "health_expenditure_percent_GDP", "pop_below_poverty_line", "bed_density_per_k_pop", "life_expectancy_at_birth_years", "covid_inc_unemployment", "days_since_first_infection")])
+
+library(corrplot)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+```
+
+
+
+```{r}
+#Normalized
+data = read.csv("Covid final norm data 2.csv")
+#nasa pollution
+nasa = read.csv("Nasa pollution data.csv")
+nasa = nasa[,c("country", "EPI.current")]
+data = merge(data, nasa, by = "country", all=TRUE)
+data = data[complete.cases(data),]
+data$EPI.current2 = (data$EPI.current - min(data$EPI.current))/(max(data$EPI.current)-min(data$EPI.current))
+
+#write.csv(data, "all_data.csv")
+
+
+#MODELS
+model = glm(deaths_per_M_pop ~ 
+              days_to_gov_response + 
+              pop_density + 
+              elec_consumption_bil_kwh +
+              age_over_64_ratio +
+              urban_percent +
+              bed_density_per_k_pop + 
+              tests_per_M_pop +
+              EPI.current2,
+            data=data)
+
+summary(model)
+Rs = 1-(model$deviance/model$null.deviance)
+
+#simplify
+model2 = glm(deaths_per_M_pop ~ 
+              age_over_64_ratio +
+              urban_percent +
+              bed_density_per_k_pop + 
+              tests_per_M_pop +
+              EPI.current2,
+            data=data)
+
+summary(model2)
+Rs2 = 1-(model2$deviance/model2$null.deviance)
+
+#simplify
+model3 = glm(deaths_per_M_pop ~ 
+              bed_density_per_k_pop + 
+              EPI.current2,
+            data=data)
+
+summary(model3)
+Rs3 = 1-(model3$deviance/model3$null.deviance)
+
+#simplify
+model4 = glm(deaths_per_M_pop ~ 
+              EPI.current2,
+            data=data)
+
+summary(model4)
+Rs4 = 1-(model4$deviance/model4$null.deviance)
+Rs4
+pairs.panels(data[,c( "deaths_per_M_pop", "EPI.current2")], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+```
